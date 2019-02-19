@@ -1,12 +1,8 @@
 import os
 import tempfile
 
-from eulfedora.server import Repository
 import ocfl
-from settings import FEDORA_ROOT, FEDORA_USERNAME, FEDORA_PASSWORD
-
-
-repo = Repository(root=FEDORA_ROOT, username=FEDORA_USERNAME, password=FEDORA_PASSWORD)
+from settings import REPO
 
 
 def _get_fedora3_datastreams(src_dir, pid):
@@ -18,7 +14,7 @@ def _get_fedora3_datastreams(src_dir, pid):
     #       create a version that has all datastreams, whether deleted or not
     #           as long as needed: create another version, that updates any datastreams that have a new state or new content
     #       note: Fedora needs to still return the content for deleted datastreams (instead of a 404).
-    fedora_object = repo.get_object(pid)
+    fedora_object = REPO.get_object(pid)
     for ds_name in fedora_object.ds_list.keys():
         print(f'  {ds_name}')
         ds_obj = fedora_object.getDatastreamObject(ds_name)
@@ -28,19 +24,13 @@ def _get_fedora3_datastreams(src_dir, pid):
                     f.write(chunk)
 
 
-def migrate(args):
-    pid = args.pid
-    ocfl_obj = ocfl.Object(identifier=args.pid)
+def migrate(pid, storage_root):
+    ocfl_obj = ocfl.Object(identifier=pid)
     version_metadata = ocfl.version.VersionMetadata()
     with tempfile.TemporaryDirectory() as src_dir:
-        _get_fedora3_datastreams(src_dir, args.pid)
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            obj_root = os.path.join(tmp_dir, args.pid)
-            ocfl_obj.create(srcdir=src_dir, metadata=version_metadata, objdir=obj_root)
-            print(os.listdir(tmp_dir))
-            print(os.listdir(obj_root))
-            print(os.listdir(os.path.join(obj_root, 'v1')))
-            print(os.listdir(os.path.join(obj_root, 'v1', 'content')))
+        _get_fedora3_datastreams(src_dir, pid)
+        obj_root = os.path.join(storage_root, pid)
+        ocfl_obj.create(srcdir=src_dir, metadata=version_metadata, objdir=obj_root)
 
 
 if __name__ == '__main__':
@@ -48,5 +38,5 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Migrate Fedora3 repository to OCFL storage root')
     parser.add_argument('pid')
     args = parser.parse_args()
-    migrate(args)
+    migrate(args.pid)
 
