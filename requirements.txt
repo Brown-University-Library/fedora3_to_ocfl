@@ -1,0 +1,3 @@
+git+https://github.com/zimeon/ocfl-py@5d35778b11033b57098ce8e41038e712e8a90ae8
+eulfedora==1.7.2
+
