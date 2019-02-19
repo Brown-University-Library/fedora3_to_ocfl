@@ -5,6 +5,10 @@ import ocfl
 from settings import REPO
 
 
+class MigrationError(RuntimeError):
+    pass
+
+
 def _get_fedora3_datastreams(src_dir, pid):
     #need to get list of datastreams to migrate
     #   could use fedora_object.ds_list - any deleted datastreams would just be in old versions of the ocfl object
@@ -25,11 +29,13 @@ def _get_fedora3_datastreams(src_dir, pid):
 
 
 def migrate(pid, storage_root):
+    obj_root = os.path.join(storage_root, pid)
+    if os.path.exists(obj_root):
+        raise MigrationError(f'{obj_root} already exists')
     ocfl_obj = ocfl.Object(identifier=pid)
     version_metadata = ocfl.version.VersionMetadata()
     with tempfile.TemporaryDirectory() as src_dir:
         _get_fedora3_datastreams(src_dir, pid)
-        obj_root = os.path.join(storage_root, pid)
         ocfl_obj.create(srcdir=src_dir, metadata=version_metadata, objdir=obj_root)
 
 

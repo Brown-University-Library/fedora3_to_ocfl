@@ -9,24 +9,32 @@ import migrate
 
 class TestMigrate(unittest.TestCase):
 
-    def test_basic(self):
-        #setup
+    def setUp(self):
         obj = REPO.get_object(create=True)
         obj.default_pidspace = 'testsuite'
         obj.save()
+        self.pid = obj.pid
+
+    def test_basic(self):
         #migrate
         with tempfile.TemporaryDirectory() as tmp_dir:
-            migrate.migrate(obj.pid, tmp_dir)
+            migrate.migrate(self.pid, tmp_dir)
             #verify
-            self.assertEqual(os.listdir(tmp_dir), [obj.pid])
-            with open(os.path.join(tmp_dir, obj.pid, 'inventory.json')) as f:
-                inventory = json.loads(f.read())
+            self.assertEqual(os.listdir(tmp_dir), [self.pid])
+            with open(os.path.join(tmp_dir, self.pid, 'inventory.json'), 'rb') as f:
+                inventory = json.loads(f.read().decode('utf8'))
             self.assertEqual(list(inventory['versions'].keys()), ['v1'])
             self.assertEqual(len(inventory['manifest'].keys()), 2)
-            content_dir = os.path.join(tmp_dir, obj.pid, 'v1', 'content')
+            content_dir = os.path.join(tmp_dir, self.pid, 'v1', 'content')
             self.assertEqual(os.listdir(content_dir), ['RELS-EXT', 'DC'])
         #cleanup
-        REPO.api.purgeObject(obj.pid)
+        REPO.api.purgeObject(self.pid)
+
+    def test_obj_already_exists(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            os.mkdir(os.path.join(tmp_dir, self.pid))
+            with self.assertRaises(migrate.MigrationError):
+                migrate.migrate(self.pid, tmp_dir)
 
 
 if __name__ == '__main__':
